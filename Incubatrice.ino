@@ -1,0 +1,215 @@
+/*
+    TIMER 0:    pin 6, 5 (PD6, PD5) , usato per dalay() e millis()
+    TIMER 1:    pin 9, 10   (PB1, PB2)
+    TIMER 2:    PIN 11, 3   (PB3, PD3)
+
+    ESP:
+    PIN 2 e 4
+*/
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h> // Libreria LCD I2C
+#include "DHT.h"
+#include <PID_v1.h>
+#define DHTTYPE DHT22 // DHT 22  (AM2302), AM2321
+#define PIN_DHT 8
+#define PIN_LIGHT 12
+#define PIN_FAN 9
+#define SCL A5
+#define SDA A4
+
+/**********INTERRUPT*************/
+volatile unsigned int tcnt2; //valore da cui il contatore del timer1 partirà ad ogni ciclo
+volatile bool flag = true;
+volatile int counter = 0;
+int contTimer = 0;
+
+/*************TEMPERATURA e UMIDITA'***************/
+float oldTemp = 0;
+float oldHum = 0;
+float oldHumidity = 0;
+float humidity = 0;
+float temperature = 0;
+byte arrowT = 0;
+byte arrowH = 0;
+float setPoint = 37;
+
+/************DISPLAY*************/
+byte downArrow[] = {
+  B00100,
+  B00100,
+  B00100,
+  B00100,
+  B00100,
+  B10101,
+  B01110,
+  B00100
+};
+
+byte upArrow[] = {
+  B00100,
+  B01110,
+  B10101,
+  B00100,
+  B00100,
+  B00100,
+  B00100,
+  B00100
+};
+
+byte nullC[] = {
+  B00000,
+  B00000,
+  B00000,
+  B00000,
+  B00000,
+  B00000,
+  B00000,
+  B00000
+};
+/*************PID CONTROL****************/
+double Setpoint, Input, Output;
+int WindowSize = 5000;
+unsigned long windowStartTime;
+
+/**********FUNCTION*************/
+void readTime();
+void refreshLcd();
+bool readTempHumid();
+void setTimer();
+void startTimer();
+
+
+
+DHT dht(PIN_DHT, DHTTYPE);
+LiquidCrystal_I2C lcd(0x3f, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
+PID myPID(&Input, &Output, &Setpoint, 500, 2000, 2, DIRECT);
+
+void setup()
+{
+
+  pinMode(PIN_LIGHT, OUTPUT);
+  Serial.begin(9600);
+  dht.begin();
+
+  windowStartTime = millis();
+  Setpoint = 37.7;
+  myPID.SetOutputLimits(0, WindowSize);
+  myPID.SetMode(AUTOMATIC);
+
+  setTimer();
+  startTimer();
+
+  lcd.begin(20, 4);
+  lcd.createChar(0, upArrow);
+  lcd.createChar(1, downArrow);
+  lcd.createChar(2, nullC);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("____Incubatrice_____");
+  analogWrite(PIN_FAN, 30);
+  digitalWrite(PIN_LIGHT, LOW);
+}
+
+void loop()
+{
+  Input = temperature;
+  myPID.Compute();
+  // turn the output pin on/off based on pid output
+  if (millis() - windowStartTime > WindowSize) {
+    // time to shift the Relay Window
+    windowStartTime += WindowSize;
+  }
+  digitalWrite(PIN_LIGHT, !(Output < (millis() - windowStartTime)));
+  if (flag) {
+    refreshLcd();
+    if (!readTempHumid())
+    {
+      temperature = -1;
+      humidity = -1;
+    }
+    flag = false;
+  }
+}
+
+void refreshLcd()
+{
+  lcd.setCursor(0, 1);
+  lcd.print("Temp: ");
+  lcd.print(temperature);
+  lcd.print("C");
+  lcd.setCursor(13, 1);
+  lcd.write(arrowT);
+  lcd.setCursor(0, 2);
+  lcd.print("Humidity: ");
+  lcd.print(humidity);
+  lcd.print("%");
+  lcd.setCursor(17, 2);
+  lcd.write(arrowH);
+}
+
+bool readTempHumid()
+{
+  humidity = dht.readHumidity();
+  temperature = dht.readTemperature();
+  if (int(temperature * 100) > int(oldTemp * 100)) {
+    arrowT = byte(0);
+  } else if (temperature < oldTemp) {
+    arrowT = byte(1);
+  } else {
+    arrowT = byte(2);
+  }
+  if (temperature != oldTemp ) {
+    oldTemp = temperature;
+  }
+  if (int(humidity * 100) > int(oldHum * 100)) {
+    arrowH = byte(0);
+  } else if (humidity < oldHum) {
+    arrowH = byte(1);
+  } else {
+    arrowH = byte(2);
+  }
+  if (humidity != oldHum ) {
+    oldHum = humidity;
+  }
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(humidity) || isnan(temperature))
+  { //is not a number
+    return 0;
+  }
+  return 1;
+}
+
+
+void setTimer()
+{
+  //inizializzo i registri utili per fa funzionare il timer
+  TIMSK2 &= ~(1 << TOIE2);                  //setto a zero il "timer overflow interrupt enable" così per essere sicuro che sia disattivato
+  TCCR2A &= ~((1 << WGM21) | (1 << WGM20)); //setto a 0 WGM21, WGM20 e WGM22 per
+  TCCR2B &= ~(1 << WGM22);                  //impostare la modalità normal mode of operation
+  ASSR &= ~(1 << AS2);                      //metto a zero AS2 per non usare al clock
+  TIMSK2 &= ~(1 << OCIE2A);                 //metto a zero OCIE2A per abilitare l'interrupt del compare macht A, interrupt fortnito dal comparatore fra tcnt2 e TOP (normal mode)
+  TCCR2B |= (1 << CS22);                    //setto i CS2x a 111 per impostare 1024
+  TCCR2B |= (1 << CS21);
+  TCCR2B |= (1 << CS20);
+  tcnt2 = 0;                                //da cambiare nel caso si volesse cambiare la velocità
+}
+
+void startTimer()
+{
+  if (!(TIMSK2 && B00000001))
+  {
+    TCNT2 = tcnt2;          //imposto il contatore
+    TIMSK2 |= (1 << TOIE2); //setto a uno il "timer overflow interrupt enable
+  }
+}
+
+ISR(TIMER2_OVF_vect) //routine chiamata quando avviene il match con il TOP
+{
+  TCNT2 = tcnt2;    //riporto il counter al valore iniziale da cui voglio farlo partire
+  contTimer++;
+  if (contTimer == 300) { //4 SECONDI
+    flag = true;
+    contTimer = 0;
+  }
+  //TIMSK2 &= ~(1 << TOIE2); //disabilito l'interrupt overflow per stoppare il contatore
+}
