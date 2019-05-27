@@ -8,9 +8,11 @@
 */
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h> // Libreria LCD I2C
-#include "DHT.h"
+//#include "DHT.h"
+#include <dht.h>
+
 #include <PID_v1.h>
-#define DHTTYPE DHT22 // DHT 22  (AM2302), AM2321
+//#define DHTTYPE DHT22 // DHT 22  (AM2302), AM2321
 #define PIN_DHT 8
 #define PIN_LIGHT 12
 #define PIN_FAN 9
@@ -19,7 +21,7 @@
 
 /**********INTERRUPT*************/
 volatile unsigned int tcnt2; //valore da cui il contatore del timer1 partirà ad ogni ciclo
-volatile bool flag = true;
+volatile bool flagTimer = true;
 volatile int counter = 0;
 int contTimer = 0;
 
@@ -27,8 +29,8 @@ int contTimer = 0;
 float oldTemp = 0;
 float oldHum = 0;
 float oldHumidity = 0;
-float humidity = 0;
-float temperature = 0;
+float hum = 0;
+float temp = 0;
 byte arrowT = 0;
 byte arrowH = 0;
 float setPoint = 37;
@@ -79,8 +81,9 @@ void setTimer();
 void startTimer();
 
 
+//DHT dht(PIN_DHT, DHTTYPE);
+dht DHT;
 
-DHT dht(PIN_DHT, DHTTYPE);
 LiquidCrystal_I2C lcd(0x3f, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 PID myPID(&Input, &Output, &Setpoint, 500, 2000, 2, DIRECT);
 
@@ -89,7 +92,7 @@ void setup()
 
   pinMode(PIN_LIGHT, OUTPUT);
   Serial.begin(9600);
-  dht.begin();
+  //dht.begin();
 
   windowStartTime = millis();
   Setpoint = 37.7;
@@ -112,7 +115,7 @@ void setup()
 
 void loop()
 {
-  Input = temperature;
+  Input = temp;
   myPID.Compute();
   // turn the output pin on/off based on pid output
   if (millis() - windowStartTime > WindowSize) {
@@ -120,14 +123,16 @@ void loop()
     windowStartTime += WindowSize;
   }
   digitalWrite(PIN_LIGHT, !(Output < (millis() - windowStartTime)));
-  if (flag) {
+  if (flagTimer) {
+    TIMSK2 &= ~(1 << TOIE2);
     refreshLcd();
     if (!readTempHumid())
     {
-      temperature = -1;
-      humidity = -1;
+      temp = -1;
+      hum = -1;
     }
-    flag = false;
+    flagTimer = false;
+    TIMSK2 |= (1 << TOIE2);
   }
 }
 
@@ -135,51 +140,66 @@ void refreshLcd()
 {
   lcd.setCursor(0, 1);
   lcd.print("Temp: ");
-  lcd.print(temperature);
+  lcd.print(temp);
   lcd.print("C");
   lcd.setCursor(13, 1);
   lcd.write(arrowT);
   lcd.setCursor(0, 2);
   lcd.print("Humidity: ");
-  lcd.print(humidity);
+  lcd.print(hum);
   lcd.print("%");
   lcd.setCursor(17, 2);
   lcd.write(arrowH);
 }
 
-bool readTempHumid()
-{
-  humidity = dht.readHumidity();
-  temperature = dht.readTemperature();
-  if (int(temperature * 100) > int(oldTemp * 100)) {
-    arrowT = byte(0);
-  } else if (temperature < oldTemp) {
-    arrowT = byte(1);
-  } else {
-    arrowT = byte(2);
+
+bool readTempHumid() {
+  bool flag = 0;
+  
+  int chk = DHT.read22(PIN_DHT);
+  
+  switch (chk)
+  {
+    case DHTLIB_OK:
+      hum = DHT.humidity;
+      temp = DHT.temperature;
+      if (int(temp * 100) > int(oldTemp * 100)) {
+        arrowT = byte(0);
+      } else if (temp < oldTemp) {
+        arrowT = byte(1);
+      } else {
+        arrowT = byte(2);
+      }
+      if (temp != oldTemp ) {
+        oldTemp = temp;
+      }
+      if (int(hum * 100) > int(oldHum * 100)) {
+        arrowH = byte(0);
+      } else if (hum < oldHum) {
+        arrowH = byte(1);
+      } else {
+        arrowH = byte(2);
+      }
+      if (hum != oldHum ) {
+        oldHum = hum;
+      }
+      flag = 1;
+      break;
+    case DHTLIB_ERROR_CHECKSUM:
+      Serial.print("Checksum error,\t");
+      flag = 0;
+      break;
+    case DHTLIB_ERROR_TIMEOUT:
+      Serial.print("Time out error,\t");
+      flag = 0;
+      break;
+    default:
+      Serial.print("Unknown error,\t");
+      flag = 0;
+      break;
   }
-  if (temperature != oldTemp ) {
-    oldTemp = temperature;
-  }
-  if (int(humidity * 100) > int(oldHum * 100)) {
-    arrowH = byte(0);
-  } else if (humidity < oldHum) {
-    arrowH = byte(1);
-  } else {
-    arrowH = byte(2);
-  }
-  if (humidity != oldHum ) {
-    oldHum = humidity;
-  }
-  // Check if any reads failed and exit early (to try again).
-  if (isnan(humidity) || isnan(temperature))
-  { //is not a number
-    return 0;
-  }
-  return 1;
+  return flag;
 }
-
-
 void setTimer()
 {
   //inizializzo i registri utili per fa funzionare il timer
@@ -208,7 +228,7 @@ ISR(TIMER2_OVF_vect) //routine chiamata quando avviene il match con il TOP
   TCNT2 = tcnt2;    //riporto il counter al valore iniziale da cui voglio farlo partire
   contTimer++;
   if (contTimer == 300) { //4 SECONDI
-    flag = true;
+    flagTimer = true;
     contTimer = 0;
   }
   //TIMSK2 &= ~(1 << TOIE2); //disabilito l'interrupt overflow per stoppare il contatore
