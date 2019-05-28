@@ -8,16 +8,17 @@
 */
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h> // Libreria LCD I2C
-//#include "DHT.h"
 #include <dht.h>
 
 #include <PID_v1.h>
-//#define DHTTYPE DHT22 // DHT 22  (AM2302), AM2321
 #define PIN_DHT 8
 #define PIN_LIGHT 12
+#define PIN_DHT_PW  3
 #define PIN_FAN 9
 #define SCL A5
 #define SDA A4
+#define ESP_TX 2
+#define ESP_RX 4
 
 /**********INTERRUPT*************/
 volatile unsigned int tcnt2; //valore da cui il contatore del timer1 partirà ad ogni ciclo
@@ -81,19 +82,15 @@ void setTimer();
 void startTimer();
 
 
-//DHT dht(PIN_DHT, DHTTYPE);
 dht DHT;
-
 LiquidCrystal_I2C lcd(0x3f, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 PID myPID(&Input, &Output, &Setpoint, 500, 2000, 2, DIRECT);
 
 void setup()
 {
-
+  pinMode(PIN_DHT_PW,OUTPUT);
   pinMode(PIN_LIGHT, OUTPUT);
   Serial.begin(9600);
-  //dht.begin();
-
   windowStartTime = millis();
   Setpoint = 37.7;
   myPID.SetOutputLimits(0, WindowSize);
@@ -123,6 +120,7 @@ void loop()
     windowStartTime += WindowSize;
   }
   digitalWrite(PIN_LIGHT, !(Output < (millis() - windowStartTime)));
+  
   if (flagTimer) {
     TIMSK2 &= ~(1 << TOIE2);
     refreshLcd();
@@ -130,6 +128,9 @@ void loop()
     {
       temp = -1;
       hum = -1;
+      digitalWrite(PIN_DHT_PW, HIGH);
+      delay(500);
+      digitalWrite(PIN_DHT_PW, LOW);
     }
     flagTimer = false;
     TIMSK2 |= (1 << TOIE2);
@@ -155,7 +156,6 @@ void refreshLcd()
 
 bool readTempHumid() {
   bool flag = 0;
-  
   int chk = DHT.read22(PIN_DHT);
   
   switch (chk)
