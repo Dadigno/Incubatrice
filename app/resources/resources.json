@@ -1,0 +1,32 @@
+{
+    "app": {
+        "name": "Incubatrice",
+        "description": "Applicazione di controllo e monitoraggio di una incubatrice per uova",
+        "port": 8484,
+        "sensors": {
+            "temperature": {
+                "name": "DHT22",
+                "description": "sensore di temperatura interna",
+                "unit": "celsius",
+                "value": 0
+            },
+            "humidity": {
+                "name": "DHT22",
+                "description": "sensore di umidità interno",
+                "unit": "%",
+                "value": 0
+            }
+        },
+        "actuators": {
+            "lamp": {
+                "name": "Lampada riscaldante",
+                "value": false
+            },
+            "fan": {
+                "name": "Ventola",
+                "description": "Ventola per la circolazione dell'aria",
+                "value": 0
+            }
+        }
+    }
+}

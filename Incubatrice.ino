@@ -108,6 +108,7 @@ void setup()
   lcd.print("____Incubatrice_____");
   analogWrite(PIN_FAN, 30);
   digitalWrite(PIN_LIGHT, LOW);
+  digitalWrite(PIN_DHT_PW, LOW);
 }
 
 void loop()
@@ -129,7 +130,7 @@ void loop()
       temp = -1;
       hum = -1;
       digitalWrite(PIN_DHT_PW, HIGH);
-      delay(500);
+      delay(2000);
       digitalWrite(PIN_DHT_PW, LOW);
     }
     flagTimer = false;
