@@ -4,22 +4,32 @@ const router = express.Router();  //metto express.Router() in const router cosi 
 const resources = require('./../resources/model');  //importo il model che contiere le risorse così da resouces posso accedere alle risorse che voglio
 
 //GET REQUEST
-router.route('/').get(function (req, res) { //next è la succesiva funzione middlwware che fa chiamata in catena 
-    req.result = resources.iot.actuators;  //restituisco il model di sensor quindi tutta la lista dei sensori
+router.route('/').get(function (req, res, next) { //next è la succesiva funzione middlwware che fa chiamata in catena 
+    req.result = resources.app.actuators;
+    next();
 });
-router.route('/lamp').get(function (req, res) {
-    req.result = resources.iot.actuators.lamp;
+router.route('/lamp').get(function (req, res, next) {
+    req.result = resources.app.actuators.lamp;
+    next();
 });
-router.route('/fan').get(function (req, res) {
-    req.result = resources.iot.actuators.fan;
+router.route('/fan').get(function (req, res, next) {
+    req.result = resources.app.actuators.fan;
+    next();
 });
 
 //PUT REQUEST
-router.route('/fan').put(function (req, res) {
-    observer.send(this, "fan", req.body.value);
+router.route('/fan').put(function (req, res, next) {
+    observer.send(this, resources.app.actuators.fan.name, req.body.value);
+    resources.app.actuators.fan.value = req.body.value;
+    req.result = resources.app.actuators.fan;
+    next();
+
 });
-router.route('/lamp').put(function (req, res) {
-    observer.send(this, "lamp", req.body.value);
+router.route('/lamp').put(function (req, res, next) {
+    observer.send(this, resources.app.actuators.lamp.name, req.body.value);
+    resources.app.actuators.lamp.value = req.body.value;
+    req.result = resources.app.actuators.lamp;
+    next();
 });
 
 module.exports = router;

@@ -5,13 +5,13 @@
         "port": 8484,
         "sensors": {
             "temperature": {
-                "name": "DHT22",
+                "name": "DHT22_temperature",
                 "description": "sensore di temperatura interna",
-                "unit": "celsius",
+                "unit": "C°",
                 "value": 0
             },
             "humidity": {
-                "name": "DHT22",
+                "name": "DHT22_humidity",
                 "description": "sensore di umidità interno",
                 "unit": "%",
                 "value": 0
