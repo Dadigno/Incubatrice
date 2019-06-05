@@ -1,0 +1,8 @@
+{
+    "port": "COM3",
+    "temperature": 0,
+    "humidity": 0,
+    "lamp": false,
+    "fan": 0,
+    "err": 0
+}
