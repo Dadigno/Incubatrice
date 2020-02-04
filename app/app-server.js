@@ -1,4 +1,3 @@
-require('dotenv').config({ path: 'variables.prod.env' });
 
 const httpServer = require('./servers/http');
 
@@ -7,21 +6,15 @@ const fanPlugin = require('./plugins/fan');
 const humPlugin = require('./plugins/humidity');
 const lampPlugin = require('./plugins/lamp');
 const tempPlugin = require('./plugins/temperature');
+const database = require('./database/database');
+const bot = require('./telegram/bot');
 
 fanPlugin.start({'simulate': true, 'frequency': 1000});
 humPlugin.start({'simulate': true, 'frequency': 1000});
 lampPlugin.start({'simulate': true, 'frequency': 1000});
 tempPlugin.start({'simulate': true, 'frequency': 1000});
- 
-const database = require('./database/database');
 database.startLogger({'frequency': 4000});
-
-const bot = require('./telegram/bot');
 bot.start({'run': false});
-
-
-httpServer.listen(process.env.port, function () {
-    console.info('Iot incubator started!!');
- });
+httpServer.start();
 
  

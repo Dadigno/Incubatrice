@@ -7,7 +7,7 @@
             "temperature": {
                 "name": "DHT22_temperature",
                 "description": "sensore di temperatura interna",
-                "unit": "C°",
+                "unit": "°C",
                 "value": 0
             },
             "humidity": {
@@ -25,7 +25,8 @@
             "fan": {
                 "name": "Ventola",
                 "description": "Ventola per la circolazione dell'aria",
-                "value": 0
+                "value": 0,
+                "unit": "%"
             }
         }
     }

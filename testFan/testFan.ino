@@ -1,8 +1,19 @@
 void setup() {
-  analogWrite(11,30);
+  Serial.begin(9600);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  Serial.println("avanti");
+  for(int i = 0; i <= 255; i+=1){
+    analogWrite(9,i);
+    delay(100);
+  }
+  delay(4000);
+  Serial.println("indietro");
+  for(int i = 255; i >= 0; i-=1){
+    analogWrite(9,i);
+    delay(100);
+  }
+  delay(4000);
 
 }

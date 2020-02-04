@@ -1,11 +1,7 @@
 const resources = require('../resources/model');
-const mongoose = require('mongoose');
-const DataTypes = require('./../models/DataTypes');
-const Measurement = mongoose.model('Measurement');
 
 const model = resources.app.sensors.humidity;
 const pluginName = resources.app.sensors.humidity.name;
-const unit = resources.app.sensors.humidity.unit;
 
 
 let localParams = { 'simulate': false, 'frequency': 2000 };
@@ -27,20 +23,15 @@ exports.stop = function () {
 
 //configuro l'hardware 
 function connectHardware() {
-    //const arduino = require('./../hardware/arduino');
-    //interval = setInterval(function () { model.value = arduino.light; }, localParams.frequency);
+    const arduino = require('./../hardware/arduino');
+    interval = setInterval(function () { model.value = arduino.humidity; }, localParams.frequency);
     console.info('Hardware %s sensor started!', pluginName);
 };
-//modalità di simulaizion
+//modalità di simulaizione
 function simulate() {
-    //setInterval mi permette di chiamare una callback ogni tot tempo passato come parametro
     interval = setInterval(function () {
         model.value += 1;
-        //salvo nel database
-        (new Measurement({ type: DataTypes.humidity, value: model.value })).save();
-        showValue();
     }, localParams.frequency);
     console.info('Simulated %s sensor started!', pluginName);
 };
 
-function showValue() { console.info('%s value = %s %s', pluginName, model.value, unit); };

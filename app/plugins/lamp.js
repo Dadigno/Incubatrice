@@ -30,18 +30,19 @@ function switchOnOff(name, value) {
     }
 };
 
-function connectHardware() { console.info('Hardware %s actuator started!', pluginName); };
+function connectHardware() { 
+  const arduino = require('./../hardware/arduino');
+  interval = setInterval(function () { model.value = arduino.lamp; }, localParams.frequency);
+  console.info('Hardware %s actuator started!', pluginName); 
+};
 
 function simulate() {
   interval = setInterval(function () {
-    // effetuo un cambiamento del model, l'observer se ne accorgerà..
     if (model.value) { model.value = false; } 
     else { model.value = true; }
-    showValue(); 
   }, localParams.frequency);
 
   console.info('Simulated %s actuator started!', pluginName);
 };
 
-function showValue() { console.info('%s value = %s', pluginName, model.value); };
   

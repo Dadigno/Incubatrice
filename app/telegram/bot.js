@@ -7,7 +7,7 @@ const authorized = require('./authorized');
 
 const bot = new Telegraf(process.env.BOT_TOKEN); //inizialize the telegram bot Telegraf(toker, options)
 
-const params = ({'run': false});
+let localParams = ({'run': false});
 
 const temperature = resources.app.sensors.temperature;
 const humidity = resources.app.sensors.humidity;
@@ -16,10 +16,11 @@ const fan = resources.app.actuators.fan;
 
 
 exports.start = function (params) {
-
-  if (params.run) {
+  localParams = params;
+  if (localParams.run) {
     observe();
     bot.launch();
+    console.log("Bot started");
   }
 }
 

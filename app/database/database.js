@@ -4,11 +4,15 @@ const StatusLog = require('./models/logStatusSchema');
 const DataTypes = require('./models/DataTypes');
 const resources = require('./../resources/model');
 
-
 mongoose.Promise = global.Promise;
 mongoose.connect(process.env.DATABASE, { useNewUrlParser: true });
 mongoose.set('useCreateIndex', true);
+mongoosePaginate.paginate.options = {
+  lean: false,
+};
 
+
+let intLogger = 0;
 exports.startLogger = function (params) {
   intLogger = setInterval(function () {
     (new StatusLog({ Unit_Temperature: DataTypes.temperature, temperature: resources.app.sensors.temperature.value,
@@ -17,23 +21,18 @@ exports.startLogger = function (params) {
                      Unit_Lamp: DataTypes.lamp, lamp: resources.app.actuators.lamp.value
     })).save();
   }, params.frequency);
-  console.info('status logger started at frequency of %s: ', params.frequency);
+  console.info('Status logger started at frequency of %s: ', params.frequency);
 };
 
 exports.stopLogger = function () {
   clearInterval(intLogger);
+  console.info('Logger stopped');
 };
 
 mongoose.connection.on('error', (err) => {
   console.error('Database connection error ' + err.message);
+  this.stopLogger();
 });
 
-mongoosePaginate.paginate.options = {
-  lean: false,
-};
 
-let intLogger;
-
-require('./models/measurementSchema');
-require('./models/logSchema');
 require('./models/logStatusSchema');

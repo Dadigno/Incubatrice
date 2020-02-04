@@ -5,7 +5,7 @@ const json2html = require('node-json2html');
 const encode = msgpack.encode;
 
 // In Express, a middleware is usually a function returning a function
-module.exports = function () {
+module.exports = function() {
   return function (req, res, next) {
     console.info('Representation converter middleware called!');
 
@@ -15,7 +15,7 @@ module.exports = function () {
       if (req.accepts('html')) {
         console.info('HTML representation selected!');
         // If HTML was requested, use json2html to transform the JSON into simple HTML
-        const transform = { 'tag': 'div', 'html': '${name} : ${value}' };
+        const transform = {'tag': 'div', 'html': '${name} : ${value}'};
         res.send(json2html.transform(req.result, transform));
         return;
       }
